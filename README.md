@@ -1,1 +1,1 @@
-# NES-emulator-in-Rust
+# NES emulator in Rust
