@@ -6,6 +6,7 @@ pub struct CPU {
     pub register_y: u8,
     pub status: u8,
     pub program_counter: u16,
+    pub stack_counter: u8,
     memory: [u8; 0xFFFF],
 }
 
@@ -17,6 +18,7 @@ impl CPU {
             register_y: 0,
             status: 0,
             program_counter: 0,
+            stack_counter: 0xFF,
             memory: [0u8; 0xFFFF],
         }
     }
@@ -37,6 +39,36 @@ impl CPU {
         self.mem_write(pos, (data & 0xFF) as u8);
         self.mem_write(pos + 1, (data >> 8) as u8);
     }
+
+    pub fn stack_push(&mut self, data: u8) {
+        if self.stack_counter == 0 {
+            panic!("Stack overflow");
+        }
+
+        self.memory[(0x0100 + self.stack_counter as u16) as usize] = data;
+        self.stack_counter -= 1;
+    }
+
+    pub fn stack_pop(&mut self) -> u8 {
+        if self.stack_counter == 0xFF {
+            panic!("Stack empty");
+        }
+
+        let data = self.memory[(0x0100 + self.stack_counter as u16) as usize];
+        self.stack_counter += 1;
+        data
+    }
+
+    pub fn stack_push_u16(&mut self, data: u16) {
+        self.stack_push((data >> 8) as u8);
+        self.stack_push((data & 0x00FF) as u8);
+    }
+
+    pub fn stack_pop_u16(&mut self) -> u16 {
+        self.stack_pop() as u16 | (self.stack_pop() as u16).swap_bytes()
+    }
+
+
 
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
@@ -60,41 +92,19 @@ impl CPU {
     pub fn run(&mut self) {
         loop {
             let opscode = self.mem_read(self.program_counter);
+            if opscode == 0 {return;}
+
             self.program_counter += 1;
+
+            let pc = self.program_counter;
 
             let ops = OPS_CODES.get(&opscode).expect(&format!("Invalid operation: {opscode:x}"));
 
-            match ops.name {
-                "BRK" => return,
-                "ADC" => self.adc(&ops.mode),
-                "AND" => self.and(&ops.mode),
-                "ASL" => self.asl(&ops.mode),
-                "BCC" => self.bcc(),
-                "BCS" => self.bcs(),
-                "BEQ" => self.beq(),
-                "BMI" => self.bmi(),
-                "BNE" => self.bne(),
-                "BPL" => self.bpl(),
-                "BVC" => self.bvc(),
-                "BVS" => self.bvs(),
-                "BIT" => self.bit(&ops.mode),
-                "CLC" => self.clc(),
-                "CLD" => self.cld(),
-                "CLI" => self.cli(),
-                "CLV" => self.clv(),
-                "TAX" => self.tax(),
-                "TAy" => self.tay(),
-                "INC" => self.inc(&ops.mode),
-                "INX" => self.inx(),
-                "INY" => self.iny(),
-                "LDA" => self.lda(&ops.mode),
-                "STA" => self.sta(&ops.mode),
-                "STX" => self.stx(&ops.mode),
-                "STY" => self.sty(&ops.mode),
-                _ => unimplemented!(),
-            }
+            (ops.call)(self, &ops.mode);
 
-            self.program_counter += (ops.len - 1) as u16;
+            if pc == self.program_counter {
+                self.program_counter += (ops.len - 1) as u16;
+            }
         }
     }
 }
@@ -122,7 +132,7 @@ mod test {
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
         let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xA9, 0x0A,0xAA, 0x00]);
+        cpu.load_and_run(vec![0xA9, 0x0A, 0xAA, 0x00]);
 
         assert_eq!(cpu.register_x, 10)
     }

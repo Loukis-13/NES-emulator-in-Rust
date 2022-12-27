@@ -32,13 +32,13 @@ impl CPU {
         };
     }
 
-    pub fn set_break_flag(&mut self, result: bool) {
-        self.status = if result {
-            self.status | 0b0001_0000
-        } else {
-            self.status & 0b1110_1111
-        };
-    }
+    // pub fn set_break_flag(&mut self, result: bool) {
+    //     self.status = if result {
+    //         self.status | 0b0001_0000
+    //     } else {
+    //         self.status & 0b1110_1111
+    //     };
+    // }
 
     pub fn set_decimal_flag(&mut self, result: bool) {
         self.status = if result {
