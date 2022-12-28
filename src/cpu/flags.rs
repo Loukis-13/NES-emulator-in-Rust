@@ -1,6 +1,6 @@
 use crate::cpu::cpu::CPU;
 
-// FLAGS 
+// FLAGS
 // CARRY                 0b0000_0001
 // ZERO                  0b0000_0010
 // INTERRUPT DISABLE     0b0000_0100

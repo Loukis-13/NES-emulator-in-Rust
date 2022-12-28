@@ -18,7 +18,7 @@ impl CPU {
             register_y: 0,
             status: 0,
             program_counter: 0,
-            stack_counter: 0xFF,
+            stack_counter: 0xFD,
             memory: [0u8; 0xFFFF],
         }
     }
@@ -50,13 +50,12 @@ impl CPU {
     }
 
     pub fn stack_pop(&mut self) -> u8 {
-        if self.stack_counter == 0xFF {
+        if self.stack_counter == 0xFD {
             panic!("Stack empty");
         }
 
-        let data = self.memory[(0x0100 + self.stack_counter as u16) as usize];
         self.stack_counter += 1;
-        data
+        self.memory[(0x0100 + self.stack_counter as u16) as usize]
     }
 
     pub fn stack_push_u16(&mut self, data: u16) {
@@ -65,7 +64,10 @@ impl CPU {
     }
 
     pub fn stack_pop_u16(&mut self) -> u16 {
-        self.stack_pop() as u16 | (self.stack_pop() as u16).swap_bytes()
+        let lo = self.stack_pop() as u16;
+        let hi = self.stack_pop() as u16;
+
+        hi << 8 | lo
     }
 
 
@@ -77,8 +79,8 @@ impl CPU {
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, 0x8000);
+        self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
+        self.mem_write_u16(0xFFFC, 0x0600);
     }
 
     pub fn reset(&mut self) {
@@ -90,6 +92,13 @@ impl CPU {
     }
 
     pub fn run(&mut self) {
+        self.run_with_callback(|_| {});
+    }
+
+    pub fn run_with_callback<F>(&mut self, mut callback: F)
+    where
+        F: FnMut(&mut CPU)
+    {
         loop {
             let opscode = self.mem_read(self.program_counter);
             if opscode == 0 {return;}
@@ -105,6 +114,8 @@ impl CPU {
             if pc == self.program_counter {
                 self.program_counter += (ops.len - 1) as u16;
             }
+
+            callback(self);
         }
     }
 }

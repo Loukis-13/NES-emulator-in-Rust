@@ -1,18 +1,20 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-use super::cpu::CPU;
 use super::addrssing_modes::AddressingMode::{self, *};
+use super::cpu::CPU;
 
 pub struct OpCode {
-    pub call: fn(&mut CPU, & AddressingMode) -> (),
+    pub call: fn(&mut CPU, &AddressingMode) -> (),
     pub mode: AddressingMode,
     pub len: u8,
     pub cycles: u8,
 }
 
 impl OpCode {
-    pub fn new(call: fn(&mut CPU, & AddressingMode) -> (), mode: AddressingMode, len: u8, cycles: u8) -> Self { Self { call, mode, len, cycles } }
+    pub fn new(call: fn(&mut CPU, &AddressingMode) -> (), mode: AddressingMode, len: u8, cycles: u8) -> Self {
+        Self { call, mode, len, cycles }
+    }
 }
 
 lazy_static!(
@@ -125,7 +127,7 @@ lazy_static!(
         (0xAD, OpCode::new(CPU::lda, Absolute,   3, 4)),
         (0xBD, OpCode::new(CPU::lda, Absolute_X, 3, 4)),
         (0xB9, OpCode::new(CPU::lda, Absolute_Y, 3, 4)),
-        (0xA1, OpCode::new(CPU::lda, Indirect_X, 2, 6)),  
+        (0xA1, OpCode::new(CPU::lda, Indirect_X, 2, 6)),
         (0xB1, OpCode::new(CPU::lda, Indirect_Y, 2, 5)),
 
         (0xA2, OpCode::new(CPU::ldx, Immediate,  2, 2)),
@@ -154,7 +156,7 @@ lazy_static!(
         (0x0D, OpCode::new(CPU::ora, Absolute,   3, 4)),
         (0x1D, OpCode::new(CPU::ora, Absolute_X, 3, 4)),
         (0x19, OpCode::new(CPU::ora, Absolute_Y, 3, 4)),
-        (0x01, OpCode::new(CPU::ora, Indirect_X, 2, 6)),  
+        (0x01, OpCode::new(CPU::ora, Indirect_X, 2, 6)),
         (0x11, OpCode::new(CPU::ora, Indirect_Y, 2, 5)),
 
         (0x48, OpCode::new(CPU::pha, NoneAddressing, 1, 3)),
@@ -187,7 +189,7 @@ lazy_static!(
         (0xED, OpCode::new(CPU::sbc, Absolute,   3, 4)),
         (0xFD, OpCode::new(CPU::sbc, Absolute_X, 3, 4)),
         (0xF9, OpCode::new(CPU::sbc, Absolute_Y, 3, 4)),
-        (0xE1, OpCode::new(CPU::sbc, Indirect_X, 2, 6)),  
+        (0xE1, OpCode::new(CPU::sbc, Indirect_X, 2, 6)),
         (0xF1, OpCode::new(CPU::sbc, Indirect_Y, 2, 5)),
 
         (0x38, OpCode::new(CPU::sec, NoneAddressing, 1, 2)),

@@ -1,4 +1,4 @@
-use super::{cpu::CPU, addrssing_modes::AddressingMode};
+use super::{addrssing_modes::AddressingMode, cpu::CPU};
 
 impl CPU {
     pub fn add_to_a(&mut self, data: u8) {
@@ -14,7 +14,7 @@ impl CPU {
 
     fn branch(&mut self, _mode: &AddressingMode) {
         let mem_read = self.mem_read(self.program_counter) as i8 as u16;
-        self.program_counter = self.program_counter.wrapping_add(mem_read);
+        self.program_counter = self.program_counter.wrapping_add(1).wrapping_add(mem_read);
     }
 
     pub fn adc(&mut self, mode: &AddressingMode) {
@@ -39,7 +39,7 @@ impl CPU {
             self.register_a <<= 1;
 
             self.update_zero_and_negative_flags(self.register_a);
-            
+
             return;
         }
 
@@ -55,35 +55,51 @@ impl CPU {
     }
 
     pub fn bcs(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0000_0001 != 0 { self.branch(&AddressingMode::NoneAddressing); }
+        if self.status & 0b0000_0001 != 0 {
+            self.branch(&AddressingMode::NoneAddressing);
+        }
     }
 
     pub fn bcc(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0000_0001 == 0 { self.branch(&AddressingMode::NoneAddressing); }
+        if self.status & 0b0000_0001 == 0 {
+            self.branch(&AddressingMode::NoneAddressing);
+        }
     }
 
     pub fn beq(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b1000_0000 != 0 { self.branch(&AddressingMode::NoneAddressing); }
-    }
-
-    pub fn bpl(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b1000_0000 == 0 { self.branch(&AddressingMode::NoneAddressing); }
-    }
-
-    pub fn bmi(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0000_0010 != 0 { self.branch(&AddressingMode::NoneAddressing); }
+        if self.status & 0b0000_0010 != 0 {
+            self.branch(&AddressingMode::NoneAddressing);
+        }
     }
 
     pub fn bne(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0000_0010 == 0 { self.branch(&AddressingMode::NoneAddressing); }
+        if self.status & 0b0000_0010 == 0 {
+            self.branch(&AddressingMode::NoneAddressing);
+        }
+    }
+
+    pub fn bmi(&mut self, _mode: &AddressingMode) {
+        if self.status & 0b1000_0000 != 0 {
+            self.branch(&AddressingMode::NoneAddressing);
+        }
+    }
+
+    pub fn bpl(&mut self, _mode: &AddressingMode) {
+        if self.status & 0b1000_0000 == 0 {
+            self.branch(&AddressingMode::NoneAddressing);
+        }
     }
 
     pub fn bvs(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0100_0000 != 0 { self.branch(&AddressingMode::NoneAddressing); }
+        if self.status & 0b0100_0000 != 0 {
+            self.branch(&AddressingMode::NoneAddressing);
+        }
     }
 
     pub fn bvc(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0100_0000 == 0 { self.branch(&AddressingMode::NoneAddressing); }
+        if self.status & 0b0100_0000 == 0 {
+            self.branch(&AddressingMode::NoneAddressing);
+        }
     }
 
     pub fn bit(&mut self, mode: &AddressingMode) {
@@ -121,7 +137,7 @@ impl CPU {
         let addr = self.get_operand_address(mode);
         let data = self.mem_read(addr);
 
-        let diff = self.register_x.wrapping_sub(data);
+        let diff = self.register_a.wrapping_sub(data);
 
         self.set_carry_flag(diff > 0);
         self.update_zero_and_negative_flags(diff);
@@ -141,7 +157,7 @@ impl CPU {
         let addr = self.get_operand_address(mode);
         let data = self.mem_read(addr);
 
-        let diff = self.register_x.wrapping_sub(data);
+        let diff = self.register_y.wrapping_sub(data);
 
         self.set_carry_flag(diff > 0);
         self.update_zero_and_negative_flags(diff);
@@ -243,7 +259,7 @@ impl CPU {
             self.register_a >>= 1;
 
             self.update_zero_and_negative_flags(self.register_a);
-            
+
             return;
         }
 
@@ -291,14 +307,14 @@ impl CPU {
     pub fn rol(&mut self, mode: &AddressingMode) {
         let m = self.status & 0b0000_0001;
 
-        if matches!(mode, AddressingMode::Accumulator) {    
+        if matches!(mode, AddressingMode::Accumulator) {
             self.set_carry_flag(self.register_a & 0b1000_0000 != 0);
 
             self.register_a <<= 1;
             self.register_a |= m;
 
             self.update_zero_and_negative_flags(self.register_a);
-            
+
             return;
         }
 
@@ -317,14 +333,14 @@ impl CPU {
     pub fn ror(&mut self, mode: &AddressingMode) {
         let m = 0b1000_0000 * (self.status & 0b0000_0001);
 
-        if matches!(mode, AddressingMode::Accumulator) {    
+        if matches!(mode, AddressingMode::Accumulator) {
             self.set_carry_flag(self.register_a & 0b0000_0001 != 0);
 
             self.register_a >>= 1;
             self.register_a |= m;
 
             self.update_zero_and_negative_flags(self.register_a);
-            
+
             return;
         }
 
@@ -342,7 +358,7 @@ impl CPU {
 
     pub fn rti(&mut self, _mode: &AddressingMode) {
         self.status = self.stack_pop();
-        self.program_counter = self.stack_pop_u16() ;
+        self.program_counter = self.stack_pop_u16();
     }
 
     pub fn rts(&mut self, _mode: &AddressingMode) {
