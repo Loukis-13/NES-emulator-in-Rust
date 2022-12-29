@@ -1,4 +1,4 @@
-use super::cpu::CPU;
+use super::{cpu::CPU, memory::Mem};
 
 #[derive(Debug)]
 #[allow(non_camel_case_types)]

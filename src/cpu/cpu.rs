@@ -1,4 +1,6 @@
-use super::opscodes::OPS_CODES;
+use crate::{bus::Bus, rom::Rom};
+
+use super::{opscodes::OPS_CODES, memory::Mem};
 
 pub struct CPU {
     pub register_a: u8,
@@ -7,11 +9,29 @@ pub struct CPU {
     pub status: u8,
     pub program_counter: u16,
     pub stack_counter: u8,
-    memory: [u8; 0xFFFF],
+    pub bus: Bus,
+}
+
+impl Mem for CPU {
+    fn mem_read(&self, addr: u16) -> u8 {
+        self.bus.mem_read(addr)
+    }
+ 
+    fn mem_write(&mut self, addr: u16, data: u8) {
+        self.bus.mem_write(addr, data)
+    }
+
+    fn mem_read_u16(&self, pos: u16) -> u16 {
+        self.bus.mem_read_u16(pos)
+    }
+  
+    fn mem_write_u16(&mut self, pos: u16, data: u16) {
+        self.bus.mem_write_u16(pos, data)
+    }
 }
 
 impl CPU {
-    pub fn new() -> Self {
+    pub fn new(rom: Rom) -> Self {
         Self {
             register_a: 0,
             register_x: 0,
@@ -19,25 +39,8 @@ impl CPU {
             status: 0,
             program_counter: 0,
             stack_counter: 0xFD,
-            memory: [0u8; 0xFFFF],
+            bus: Bus::new(rom),
         }
-    }
-
-    pub fn mem_read(&self, addr: u16) -> u8 {
-        self.memory[addr as usize]
-    }
-
-    pub fn mem_write(&mut self, addr: u16, data: u8) {
-        self.memory[addr as usize] = data;
-    }
-
-    pub fn mem_read_u16(&mut self, pos: u16) -> u16 {
-        (self.mem_read(pos + 1) as u16).swap_bytes() | (self.mem_read(pos) as u16)
-    }
-
-    pub fn mem_write_u16(&mut self, pos: u16, data: u16) {
-        self.mem_write(pos, (data & 0xFF) as u8);
-        self.mem_write(pos + 1, (data >> 8) as u8);
     }
 
     pub fn stack_push(&mut self, data: u8) {
@@ -45,7 +48,7 @@ impl CPU {
             panic!("Stack overflow");
         }
 
-        self.memory[(0x0100 + self.stack_counter as u16) as usize] = data;
+        self.mem_write(0x0100 + self.stack_counter as u16, data);
         self.stack_counter -= 1;
     }
 
@@ -55,7 +58,7 @@ impl CPU {
         }
 
         self.stack_counter += 1;
-        self.memory[(0x0100 + self.stack_counter as u16) as usize]
+        self.mem_read(0x0100 + self.stack_counter as u16)
     }
 
     pub fn stack_push_u16(&mut self, data: u16) {
@@ -79,7 +82,10 @@ impl CPU {
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
+        // self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
+        for i in 0..(program.len() as u16) {
+            self.mem_write(0x0600 + i, program[i as usize]);
+        }
         self.mem_write_u16(0xFFFC, 0x0600);
     }
 
@@ -117,60 +123,5 @@ impl CPU {
 
             callback(self);
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_0xa9_lda_immidiate_load_data() {
-        let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xA9, 0x05, 0x00]);
-        assert_eq!(cpu.register_a, 5);
-        assert!(cpu.status & 0b0000_0010 == 0);
-        assert!(cpu.status & 0b1000_0000 == 0);
-    }
-
-    #[test]
-    fn test_0xa9_lda_zero_flag() {
-        let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xA9, 0x00, 0x00]);
-        assert!(cpu.status & 0b0000_0010 == 0b10);
-    }
-
-    #[test]
-    fn test_0xaa_tax_move_a_to_x() {
-        let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xA9, 0x0A, 0xAA, 0x00]);
-
-        assert_eq!(cpu.register_x, 10)
-    }
-
-    #[test]
-    fn test_5_ops_working_together() {
-        let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xA9, 0xC0, 0xAA, 0xE8, 0x00]);
-
-        assert_eq!(cpu.register_x, 0xC1)
-    }
-
-    #[test]
-    fn test_inx_overflow() {
-        let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xA9, 0xFF, 0xAA, 0xE8, 0xE8, 0x00]);
-
-        assert_eq!(cpu.register_x, 1)
-    }
-
-    #[test]
-    fn test_lda_from_memory() {
-        let mut cpu = CPU::new();
-        cpu.mem_write(0x10, 0x55);
-
-        cpu.load_and_run(vec![0xA5, 0x10, 0x00]);
-
-        assert_eq!(cpu.register_a, 0x55);
     }
 }

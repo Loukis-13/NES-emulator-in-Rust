@@ -1,4 +1,4 @@
-use super::{addrssing_modes::AddressingMode, cpu::CPU};
+use super::{addrssing_modes::AddressingMode, cpu::CPU, Mem};
 
 impl CPU {
     pub fn add_to_a(&mut self, data: u8) {
