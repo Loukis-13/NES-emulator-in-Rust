@@ -7,6 +7,8 @@ use rand::Rng;
 use rom::Rom;
 use sdl2::{pixels::{PixelFormatEnum, Color}, event::Event, EventPump, keyboard::Keycode};
 
+use crate::cpu::trace;
+
 fn main() {
     // init sdl2
     let sdl_context = sdl2::init().unwrap();
@@ -26,29 +28,34 @@ fn main() {
         .create_texture_target(PixelFormatEnum::RGB24, 32, 32)
         .unwrap();
 
-    let game_code = std::fs::read("snake.nes").unwrap();
+    let game_code = std::fs::read("test/nestest.nes").unwrap();
     let rom = Rom::new(&game_code).unwrap();
 
     //load the game
     let mut cpu = CPU::new(rom);
     cpu.reset();
+    cpu.program_counter = 0xC000;
 
-    let mut screen_state = [0 as u8; 32 * 3 * 32];
-    let mut rng = rand::thread_rng();
+    // let mut screen_state = [0 as u8; 32 * 3 * 32];
+    // let mut rng = rand::thread_rng();
 
-    // run the game cycle
     cpu.run_with_callback(move |cpu| {
-        handle_user_input(cpu, &mut event_pump);
-        cpu.mem_write(0xFE, rng.gen_range(1..16));
-
-        if read_screen_state(cpu, &mut screen_state) {
-            texture.update(None, &screen_state, 32 * 3).unwrap();
-            canvas.copy(&texture, None, None).unwrap();
-            canvas.present();
-        }
-
-        // ::std::thread::sleep(Duration::new(0, 2a0_000));
+        println!("{}", trace(cpu));
     });
+
+    // // run the game cycle
+    // cpu.run_with_callback(move |cpu| {
+    //     handle_user_input(cpu, &mut event_pump);
+    //     cpu.mem_write(0xFE, rng.gen_range(1..16));
+
+    //     if read_screen_state(cpu, &mut screen_state) {
+    //         texture.update(None, &screen_state, 32 * 3).unwrap();
+    //         canvas.copy(&texture, None, None).unwrap();
+    //         canvas.present();
+    //     }
+
+    //     // ::std::thread::sleep(Duration::new(0, 2a0_000));
+    // });
 }
 
 fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {

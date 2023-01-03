@@ -1,6 +1,8 @@
 use crate::{bus::Bus, rom::Rom};
 
-use super::{opscodes::OPS_CODES, memory::Mem};
+use super::{memory::Mem, opscodes::OPS_CODES};
+
+// static DEBUG: bool = true;
 
 pub struct CPU {
     pub register_a: u8,
@@ -16,7 +18,7 @@ impl Mem for CPU {
     fn mem_read(&self, addr: u16) -> u8 {
         self.bus.mem_read(addr)
     }
- 
+
     fn mem_write(&mut self, addr: u16, data: u8) {
         self.bus.mem_write(addr, data)
     }
@@ -24,7 +26,7 @@ impl Mem for CPU {
     fn mem_read_u16(&self, pos: u16) -> u16 {
         self.bus.mem_read_u16(pos)
     }
-  
+
     fn mem_write_u16(&mut self, pos: u16, data: u16) {
         self.bus.mem_write_u16(pos, data)
     }
@@ -36,7 +38,7 @@ impl CPU {
             register_a: 0,
             register_x: 0,
             register_y: 0,
-            status: 0,
+            status: 0b0010_0100,
             program_counter: 0,
             stack_counter: 0xFD,
             bus: Bus::new(rom),
@@ -73,8 +75,6 @@ impl CPU {
         hi << 8 | lo
     }
 
-
-
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
         self.reset();
@@ -92,7 +92,7 @@ impl CPU {
     pub fn reset(&mut self) {
         self.register_a = 0;
         self.register_x = 0;
-        self.status = 0;
+        self.status = 0b0010_0100;
 
         self.program_counter = self.mem_read_u16(0xFFFC);
     }
@@ -103,17 +103,46 @@ impl CPU {
 
     pub fn run_with_callback<F>(&mut self, mut callback: F)
     where
-        F: FnMut(&mut CPU)
+        F: FnMut(&mut CPU),
     {
         loop {
+            callback(self);
             let opscode = self.mem_read(self.program_counter);
-            if opscode == 0 {return;}
+            if opscode == 0 {
+                return;
+            }
 
             self.program_counter += 1;
 
             let pc = self.program_counter;
 
-            let ops = OPS_CODES.get(&opscode).expect(&format!("Invalid operation: {opscode:x}"));
+            let ops = OPS_CODES
+                .get(&opscode)
+                .expect(&format!("Invalid operation: {opscode:x}"));
+
+            // if DEBUG {
+            //     print!("{:4X}  ", self.program_counter);
+
+            //     match ops.len {
+            //         1 => print!("{:02X}      ", opscode),
+            //         2 => print!("{:02X} {:02X}   ", opscode, self.mem_read(pc)),
+            //         3 => print!("{:02X} {:02X} {:02X}", opscode, self.mem_read(pc), self.mem_read(pc+1)),
+            //         _ => panic!("More than three bytes taken in a cycle"),
+            //     }
+
+            //     print!("  {}", ops.name);
+
+            //     print!(
+            //         "A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}",
+            //         self.register_a,
+            //         self.register_x,
+            //         self.register_y,
+            //         self.status,
+            //         self.stack_counter
+            //     );
+
+            //     println!();
+            // }
 
             (ops.call)(self, &ops.mode);
 
@@ -121,7 +150,28 @@ impl CPU {
                 self.program_counter += (ops.len - 1) as u16;
             }
 
-            callback(self);
+            // callback(self);
         }
+    }
+}
+
+#[cfg(test)]
+mod test_cpu {
+    use crate::cpu::trace::trace;
+
+    use super::*;
+
+    #[test]
+    fn test_() {
+        let game_code = std::fs::read("test/nestest.nes").unwrap();
+        let rom = Rom::new(&game_code).unwrap();
+
+        //load the game
+        let mut cpu = CPU::new(rom);
+        cpu.reset();
+
+        cpu.run_with_callback(move |cpu| {
+            println!("{}", trace(cpu));
+        });
     }
 }

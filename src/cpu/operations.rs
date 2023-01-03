@@ -2,12 +2,14 @@ use super::{addrssing_modes::AddressingMode, cpu::CPU, Mem};
 
 impl CPU {
     pub fn add_to_a(&mut self, data: u8) {
-        let sum = (self.register_a as u16) + data as u16;
+        let sum = (self.register_a as u16) + (self.status & 0b0000_0001 != 0) as u16 + data as u16;
 
         self.set_carry_flag(sum > 0xFF);
-        self.set_overflow_flag((self.register_a & 0b1000_0000 == 0) && (sum & 0b1000_0000 != 0));
 
-        self.register_a = sum as u8;
+        let sum = sum as u8;
+        self.set_overflow_flag((data ^ sum) & (self.register_a ^ sum) & 0x80 != 0);
+
+        self.register_a = sum;
 
         self.update_zero_and_negative_flags(self.register_a);
     }
@@ -20,8 +22,7 @@ impl CPU {
     pub fn adc(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let data = self.mem_read(addr);
-
-        self.add_to_a(data.wrapping_add((self.status & 0b0000_0001 != 0) as u8));
+        self.add_to_a(data);
     }
 
     pub fn and(&mut self, mode: &AddressingMode) {
@@ -106,11 +107,9 @@ impl CPU {
         let addr = self.get_operand_address(mode);
         let data = self.mem_read(addr);
 
-        let result = data & self.register_a;
-
-        self.set_zero_flag(result == 0);
-        self.set_overflow_flag(result & 0b0100_0000 != 0);
-        self.set_negative_flag(result & 0b1000_0000 != 0);
+        self.set_zero_flag(data & self.register_a == 0);
+        self.set_overflow_flag(data & 0b0100_0000 != 0);
+        self.set_negative_flag(data & 0b1000_0000 != 0);
     }
 
     // pub fn brk(&mut self, _mode: &AddressingMode) {
@@ -137,30 +136,24 @@ impl CPU {
         let addr = self.get_operand_address(mode);
         let data = self.mem_read(addr);
 
-        let diff = self.register_a.wrapping_sub(data);
-
-        self.set_carry_flag(diff > 0);
-        self.update_zero_and_negative_flags(diff);
+        self.set_carry_flag(self.register_a >= data);
+        self.update_zero_and_negative_flags(self.register_a.wrapping_sub(data));
     }
 
     pub fn cpx(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let data = self.mem_read(addr);
 
-        let diff = self.register_x.wrapping_sub(data);
-
-        self.set_carry_flag(diff > 0);
-        self.update_zero_and_negative_flags(diff);
+        self.set_carry_flag(self.register_x >= data);
+        self.update_zero_and_negative_flags(self.register_x.wrapping_sub(data));
     }
 
     pub fn cpy(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let data = self.mem_read(addr);
 
-        let diff = self.register_y.wrapping_sub(data);
-
-        self.set_carry_flag(diff > 0);
-        self.update_zero_and_negative_flags(diff);
+        self.set_carry_flag(self.register_y >= data);
+        self.update_zero_and_negative_flags(self.register_y.wrapping_sub(data));
     }
 
     pub fn dec(&mut self, mode: &AddressingMode) {
@@ -207,25 +200,46 @@ impl CPU {
         self.update_zero_and_negative_flags(self.register_y);
     }
 
-    pub fn jmp(&mut self, mode: &AddressingMode) {
-        let mut addr = self.get_operand_address(mode);
+    // pub fn jmp(&mut self, mode: &AddressingMode) {
+    //     let mut addr = self.get_operand_address(mode);
 
-        if matches!(mode, AddressingMode::Indirect) {
-            addr = if addr & 0x00FF == 0x00FF {
-                let lo = self.mem_read(addr);
-                let hi = self.mem_read(addr & 0xFF00);
-                (hi as u16) << 8 | (lo as u16)
-            } else {
-                self.mem_read_u16(addr)
-            }
-        }
+    //     if matches!(mode, AddressingMode::Indirect) {
+    //         addr = if addr & 0x00FF == 0x00FF {
+    //             let lo = self.mem_read(addr);
+    //             let hi = self.mem_read(addr & 0xFF00);
+    //             (hi as u16) << 8 | (lo as u16)
+    //         } else {
+    //             self.mem_read_u16(addr)
+    //         }
+    //     }
+
+    //     self.program_counter = addr;
+    // }
+
+    pub fn jmpa(&mut self, _mode: &AddressingMode) {
+        let addr = self.mem_read_u16(self.program_counter);
 
         self.program_counter = addr;
     }
 
-    pub fn jsr(&mut self, mode: &AddressingMode) {
+    pub fn jmpi(&mut self, _mode: &AddressingMode) {
+        let mut addr = self.mem_read_u16(self.program_counter);
+
+        addr = if addr & 0x00FF == 0x00FF {
+            let lo = self.mem_read(addr);
+            let hi = self.mem_read(addr & 0xFF00);
+            (hi as u16) << 8 | (lo as u16)
+        } else {
+            self.mem_read_u16(addr)
+        };
+
+        self.program_counter = addr;
+    }
+
+    pub fn jsr(&mut self, _mode: &AddressingMode) {
         self.stack_push_u16(self.program_counter + 1);
-        self.program_counter = self.get_operand_address(mode);
+        // self.program_counter = self.get_operand_address(mode);
+        self.program_counter = self.mem_read_u16(self.program_counter);
     }
 
     pub fn lda(&mut self, mode: &AddressingMode) {
@@ -292,7 +306,7 @@ impl CPU {
     }
 
     pub fn php(&mut self, _mode: &AddressingMode) {
-        self.stack_push(self.status);
+        self.stack_push(self.status | 0b0011_0000);
     }
 
     pub fn pla(&mut self, _mode: &AddressingMode) {
@@ -302,6 +316,8 @@ impl CPU {
 
     pub fn plp(&mut self, _mode: &AddressingMode) {
         self.status = self.stack_pop();
+        self.status &= 0b1110_1111;
+        self.status |= 0b0010_0000;
     }
 
     pub fn rol(&mut self, mode: &AddressingMode) {
@@ -358,6 +374,8 @@ impl CPU {
 
     pub fn rti(&mut self, _mode: &AddressingMode) {
         self.status = self.stack_pop();
+        self.status &= 0b1110_1111;
+        self.status |= 0b0010_0000;
         self.program_counter = self.stack_pop_u16();
     }
 
@@ -369,7 +387,7 @@ impl CPU {
         let addr = self.get_operand_address(mode);
         let data = self.mem_read(addr);
 
-        self.add_to_a((!data + 1).wrapping_sub((self.status & 0b0000_0001 == 0) as u8));
+        self.add_to_a(!data);
     }
 
     pub fn sec(&mut self, _mode: &AddressingMode) {
@@ -421,7 +439,6 @@ impl CPU {
 
     pub fn txs(&mut self, _mode: &AddressingMode) {
         self.stack_counter = self.register_x;
-        self.update_zero_and_negative_flags(self.stack_counter);
     }
 
     pub fn tya(&mut self, _mode: &AddressingMode) {
