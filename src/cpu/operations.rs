@@ -2,7 +2,7 @@ use super::{addrssing_modes::AddressingMode, cpu::CPU, Mem};
 
 impl CPU {
     pub fn add_to_a(&mut self, data: u8) {
-        let sum = (self.register_a as u16) + (self.status & 0b0000_0001 != 0) as u16 + data as u16;
+        let sum = (self.register_a as u16) + self.is_carry_set() as u16 + data as u16;
 
         self.set_carry_flag(sum > 0xFF);
 
@@ -56,49 +56,49 @@ impl CPU {
     }
 
     pub fn bcs(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0000_0001 != 0 {
+        if self.is_carry_set() {
             self.branch(&AddressingMode::NoneAddressing);
         }
     }
 
     pub fn bcc(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0000_0001 == 0 {
+        if !self.is_carry_set() {
             self.branch(&AddressingMode::NoneAddressing);
         }
     }
 
     pub fn beq(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0000_0010 != 0 {
+        if self.is_zero_set() {
             self.branch(&AddressingMode::NoneAddressing);
         }
     }
 
     pub fn bne(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0000_0010 == 0 {
+        if !self.is_zero_set() {
             self.branch(&AddressingMode::NoneAddressing);
         }
     }
 
     pub fn bmi(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b1000_0000 != 0 {
+        if self.is_negative_set() {
             self.branch(&AddressingMode::NoneAddressing);
         }
     }
 
     pub fn bpl(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b1000_0000 == 0 {
+        if !self.is_negative_set() {
             self.branch(&AddressingMode::NoneAddressing);
         }
     }
 
     pub fn bvs(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0100_0000 != 0 {
+        if self.is_overflow_set() {
             self.branch(&AddressingMode::NoneAddressing);
         }
     }
 
     pub fn bvc(&mut self, _mode: &AddressingMode) {
-        if self.status & 0b0100_0000 == 0 {
+        if !self.is_overflow_set() {
             self.branch(&AddressingMode::NoneAddressing);
         }
     }
@@ -316,12 +316,12 @@ impl CPU {
 
     pub fn plp(&mut self, _mode: &AddressingMode) {
         self.status = self.stack_pop();
-        self.status &= 0b1110_1111;
-        self.status |= 0b0010_0000;
+        self.set_break_flag(false);
+        self.set_break2_flag(true);
     }
 
     pub fn rol(&mut self, mode: &AddressingMode) {
-        let m = self.status & 0b0000_0001;
+        let m = self.is_carry_set() as u8;
 
         if matches!(mode, AddressingMode::Accumulator) {
             self.set_carry_flag(self.register_a & 0b1000_0000 != 0);
@@ -347,7 +347,7 @@ impl CPU {
     }
 
     pub fn ror(&mut self, mode: &AddressingMode) {
-        let m = 0b1000_0000 * (self.status & 0b0000_0001);
+        let m = if self.is_carry_set() {0b1000_0000} else {0};
 
         if matches!(mode, AddressingMode::Accumulator) {
             self.set_carry_flag(self.register_a & 0b0000_0001 != 0);
@@ -374,8 +374,8 @@ impl CPU {
 
     pub fn rti(&mut self, _mode: &AddressingMode) {
         self.status = self.stack_pop();
-        self.status &= 0b1110_1111;
-        self.status |= 0b0010_0000;
+        self.set_break_flag(false);
+        self.set_break2_flag(true);
         self.program_counter = self.stack_pop_u16();
     }
 
