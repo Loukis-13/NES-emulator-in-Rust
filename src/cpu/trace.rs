@@ -1,7 +1,7 @@
 use super::{addrssing_modes::AddressingMode, opscodes::OPS_CODES, Mem, CPU};
 
 impl CPU {
-    pub fn get_absolute_address(&self, mode: &AddressingMode, addr: u16) -> u16 {
+    pub fn get_absolute_address(&mut self, mode: &AddressingMode, addr: u16) -> u16 {
         match mode {
             AddressingMode::ZeroPage => self.mem_read(addr) as u16,
 
@@ -54,7 +54,7 @@ impl CPU {
     }
 }
 
-pub fn trace(cpu: &CPU) -> String {
+pub fn trace(cpu: &mut CPU) -> String {
     let code = cpu.mem_read(cpu.program_counter);
     let ops = OPS_CODES
         .get(&code)

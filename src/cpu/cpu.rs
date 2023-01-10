@@ -15,7 +15,7 @@ pub struct CPU {
 }
 
 impl Mem for CPU {
-    fn mem_read(&self, addr: u16) -> u8 {
+    fn mem_read(&mut self, addr: u16) -> u8 {
         self.bus.mem_read(addr)
     }
 
@@ -23,7 +23,7 @@ impl Mem for CPU {
         self.bus.mem_write(addr, data)
     }
 
-    fn mem_read_u16(&self, pos: u16) -> u16 {
+    fn mem_read_u16(&mut self, pos: u16) -> u16 {
         self.bus.mem_read_u16(pos)
     }
 
@@ -145,6 +145,8 @@ impl CPU {
             // }
 
             (ops.call)(self, &ops.mode);
+
+            self.bus.tick(ops.cycles);
 
             if pc == self.program_counter {
                 self.program_counter += (ops.len - 1) as u16;
