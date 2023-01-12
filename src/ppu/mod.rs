@@ -1,7 +1,7 @@
 mod ppu;
 mod flags;
 mod addr_register;
-mod satus;
+mod status;
 mod mask;
 mod scroll_register;
 

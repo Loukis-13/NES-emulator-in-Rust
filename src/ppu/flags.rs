@@ -50,6 +50,10 @@ impl ControlRegister {
     }
 
     pub fn generate_vblank_nmi(&self) -> bool {
-        todo!()
+        todo!("generate_vblank_nmi")
+    }
+
+    pub fn bknd_pattern_addr(&self) -> u16 {
+        todo!("bknd_pattern_addr")
     }
 }

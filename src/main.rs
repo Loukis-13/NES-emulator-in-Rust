@@ -1,14 +1,21 @@
-mod cpu;
 mod bus;
-mod rom;
+mod cpu;
 mod ppu;
+mod render;
+mod rom;
 
-use cpu::{CPU, Mem};
+use bus::Bus;
+use cpu::{Mem, CPU};
+use ppu::NesPPU;
 use rand::Rng;
+use render::Frame;
 use rom::Rom;
-use sdl2::{pixels::{PixelFormatEnum, Color}, event::Event, EventPump, keyboard::Keycode};
-
-use crate::cpu::trace;
+use sdl2::{
+    event::Event,
+    keyboard::Keycode,
+    pixels::{Color, PixelFormatEnum},
+    EventPump,
+};
 
 fn main() {
     // init sdl2
@@ -25,24 +32,45 @@ fn main() {
     canvas.set_scale(10.0, 10.0).unwrap();
 
     let creator = canvas.texture_creator();
-    let mut texture = creator
-        .create_texture_target(PixelFormatEnum::RGB24, 32, 32)
-        .unwrap();
-
-    let game_code = std::fs::read("test/nestest.nes").unwrap();
-    let rom = Rom::new(&game_code).unwrap();
+    let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, 32, 32).unwrap();
 
     //load the game
-    let mut cpu = CPU::new(rom);
+    let game_code = std::fs::read("Alter_Ego.nes").unwrap();
+    let rom = Rom::new(&game_code).unwrap();
+
+    let mut frame = Frame::new();
+
+    // the game cycle
+    let bus = Bus::new(rom, move |ppu: &NesPPU| {
+        render::render(ppu, &mut frame);
+        texture.update(None, &frame.data, 256 * 3).unwrap();
+
+        canvas.copy(&texture, None, None).unwrap();
+
+        canvas.present();
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => std::process::exit(0),
+                _ => { /* do nothing */ }
+            }
+        }
+    });
+
+    let mut cpu = CPU::new(bus);
+
     cpu.reset();
-    cpu.program_counter = 0xC000;
+    cpu.run();
+
+    // let mut cpu = CPU::new(rom);
+    // cpu.reset();
+    // cpu.program_counter = 0xC000;
 
     // let mut screen_state = [0 as u8; 32 * 3 * 32];
     // let mut rng = rand::thread_rng();
-
-    cpu.run_with_callback(move |cpu| {
-        println!("{}", trace(cpu));
-    });
 
     // // run the game cycle
     // cpu.run_with_callback(move |cpu| {
@@ -62,22 +90,36 @@ fn main() {
 fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
     for event in event_pump.poll_iter() {
         match event {
-            Event::Quit { .. } | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                std::process::exit(0)
-            },
-            Event::KeyDown { keycode: Some(Keycode::W), .. } => {
+            Event::Quit { .. }
+            | Event::KeyDown {
+                keycode: Some(Keycode::Escape),
+                ..
+            } => std::process::exit(0),
+            Event::KeyDown {
+                keycode: Some(Keycode::W),
+                ..
+            } => {
                 cpu.mem_write(0xff, 0x77);
-            },
-            Event::KeyDown { keycode: Some(Keycode::S), .. } => {
+            }
+            Event::KeyDown {
+                keycode: Some(Keycode::S),
+                ..
+            } => {
                 cpu.mem_write(0xff, 0x73);
-            },
-            Event::KeyDown { keycode: Some(Keycode::A), .. } => {
+            }
+            Event::KeyDown {
+                keycode: Some(Keycode::A),
+                ..
+            } => {
                 cpu.mem_write(0xff, 0x61);
-            },
-            Event::KeyDown { keycode: Some(Keycode::D), .. } => {
+            }
+            Event::KeyDown {
+                keycode: Some(Keycode::D),
+                ..
+            } => {
                 cpu.mem_write(0xff, 0x64);
             }
-            _ => {/* do nothing */}
+            _ => { /* do nothing */ }
         }
     }
 }

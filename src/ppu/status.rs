@@ -54,4 +54,8 @@ impl StatusRegister {
     pub fn get_bits(&self) -> u8 {
         self.bits
     }
+
+    pub fn is_in_vblank(&self) -> bool {
+        self.bits & VBLANK_STARTED != 0
+    }
 }

@@ -1,6 +1,6 @@
 use super::{addrssing_modes::AddressingMode, opscodes::OPS_CODES, Mem, CPU};
 
-impl CPU {
+impl<'a> CPU<'a> {
     pub fn get_absolute_address(&mut self, mode: &AddressingMode, addr: u16) -> u16 {
         match mode {
             AddressingMode::ZeroPage => self.mem_read(addr) as u16,
@@ -119,7 +119,8 @@ pub fn trace(cpu: &mut CPU) -> String {
             let address = cpu.mem_read_u16(begin + 1);
 
             match ops.mode {
-                AddressingMode::NoneAddressing => {
+                AddressingMode::Indirect => format!("${:04X}", address),
+                AddressingMode::Absolute => {
                     if code == 0x6c {
                         //jmp indirect
                         let jmp_addr = if address & 0x00FF == 0x00FF {
@@ -130,13 +131,11 @@ pub fn trace(cpu: &mut CPU) -> String {
                             cpu.mem_read_u16(address)
                         };
 
-                        // let jmp_addr = cpu.mem_read_u16(address);
                         format!("(${:04X}) = {:04X}", address, jmp_addr)
                     } else {
-                        format!("${:04X}", address)
+                        format!("${:04X} = {:02X}", mem_addr, stored_value)
                     }
                 }
-                AddressingMode::Absolute => format!("${:04X} = {:02X}", mem_addr, stored_value),
                 AddressingMode::Absolute_X => format!("${:04X},X @ {:04X} = {:02X}", address, mem_addr, stored_value),
                 AddressingMode::Absolute_Y => format!("${:04X},Y @ {:04X} = {:02X}", address, mem_addr, stored_value),
                 _ => panic!(

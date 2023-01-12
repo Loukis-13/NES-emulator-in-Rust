@@ -9,7 +9,7 @@ const BREAK2: u8               = 0b0010_0000;
 const OVERFLOW: u8             = 0b0100_0000;
 const NEGATIVE: u8             = 0b1000_0000;
 
-impl CPU {
+impl<'a> CPU<'a> {
     pub fn update_zero_and_negative_flags(&mut self, result: u8) {
         self.set_zero_flag(result == 0);
         self.set_negative_flag(result & 0b1000_0000 != 0);
