@@ -1,8 +1,8 @@
 mod ppu;
-mod flags;
+mod control_register;
 mod addr_register;
-mod status;
-mod mask;
+mod status_register;
+mod mask_register;
 mod scroll_register;
 
 pub use ppu::NesPPU;

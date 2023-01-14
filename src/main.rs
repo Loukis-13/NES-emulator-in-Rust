@@ -7,7 +7,7 @@ mod rom;
 use bus::Bus;
 use cpu::{Mem, CPU};
 use ppu::NesPPU;
-use rand::Rng;
+// use rand::Rng;
 use render::Frame;
 use rom::Rom;
 use sdl2::{
@@ -18,24 +18,28 @@ use sdl2::{
 };
 
 fn main() {
+    let game_name = "pacman.nes";
+
     // init sdl2
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("Snake game", 32 * 10, 32 * 10)
+        .window(game_name.trim_end_matches(".nes"), 256 * 3, 240 * 3)
         .position_centered()
         .build()
         .unwrap();
 
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
-    canvas.set_scale(10.0, 10.0).unwrap();
+    canvas.set_scale(3.0, 3.0).unwrap();
 
     let creator = canvas.texture_creator();
-    let mut texture = creator.create_texture_target(PixelFormatEnum::RGB24, 32, 32).unwrap();
+    let mut texture = creator
+        .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
+        .unwrap();
 
     //load the game
-    let game_code = std::fs::read("Alter_Ego.nes").unwrap();
+    let game_code = std::fs::read(game_name).unwrap();
     let rom = Rom::new(&game_code).unwrap();
 
     let mut frame = Frame::new();
@@ -64,27 +68,6 @@ fn main() {
 
     cpu.reset();
     cpu.run();
-
-    // let mut cpu = CPU::new(rom);
-    // cpu.reset();
-    // cpu.program_counter = 0xC000;
-
-    // let mut screen_state = [0 as u8; 32 * 3 * 32];
-    // let mut rng = rand::thread_rng();
-
-    // // run the game cycle
-    // cpu.run_with_callback(move |cpu| {
-    //     handle_user_input(cpu, &mut event_pump);
-    //     cpu.mem_write(0xFE, rng.gen_range(1..16));
-
-    //     if read_screen_state(cpu, &mut screen_state) {
-    //         texture.update(None, &screen_state, 32 * 3).unwrap();
-    //         canvas.copy(&texture, None, None).unwrap();
-    //         canvas.present();
-    //     }
-
-    //     // ::std::thread::sleep(Duration::new(0, 2a0_000));
-    // });
 }
 
 fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {

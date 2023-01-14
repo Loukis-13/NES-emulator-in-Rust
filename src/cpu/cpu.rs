@@ -3,6 +3,8 @@ use crate::bus::Bus;
 use super::{memory::Mem, opscodes::OPS_CODES};
 
 // static DEBUG: bool = true;
+const STACK: u16 = 0x0100;
+const STACK_RESET: u8 = 0xfd;
 
 pub struct CPU<'a> {
     pub register_a: u8,
@@ -40,27 +42,19 @@ impl<'a> CPU<'a> {
             register_y: 0,
             status: 0b0010_0100,
             program_counter: 0,
-            stack_counter: 0xFD,
+            stack_counter: STACK_RESET,
             bus,
         }
     }
 
     pub fn stack_push(&mut self, data: u8) {
-        if self.stack_counter == 0 {
-            panic!("Stack overflow");
-        }
-
-        self.mem_write(0x0100 + self.stack_counter as u16, data);
+        self.mem_write(STACK + self.stack_counter as u16, data);
         self.stack_counter -= 1;
     }
 
     pub fn stack_pop(&mut self) -> u8 {
-        if self.stack_counter == 0xFD {
-            panic!("Stack empty");
-        }
-
         self.stack_counter += 1;
-        self.mem_read(0x0100 + self.stack_counter as u16)
+        self.mem_read(STACK + self.stack_counter as u16)
     }
 
     pub fn stack_push_u16(&mut self, data: u16) {
@@ -77,12 +71,8 @@ impl<'a> CPU<'a> {
 
     fn interrupt_nmi(&mut self) {
         self.stack_push_u16(self.program_counter);
-        self.stack_push(self.status);
-        self.set_interrupt_disable_flag(true);
-        self.program_counter = self.mem_read_u16(0xFFFA);
-
-        self.stack_push_u16(self.program_counter);
         let mut flag = self.status.clone();
+        // TODO make flag a struct
         flag &= !0b0001_0000;
         flag |= 0b0010_0000;
 
@@ -96,20 +86,22 @@ impl<'a> CPU<'a> {
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
         self.reset();
+        self.program_counter = 0x0600;
         self.run();
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
-        // self.memory[0x0600..(0x0600 + program.len())].copy_from_slice(&program[..]);
         for i in 0..(program.len() as u16) {
             self.mem_write(0x0600 + i, program[i as usize]);
         }
-        self.mem_write_u16(0xFFFC, 0x0600);
+        // self.mem_write_u16(0xFFFC, 0x0600);
     }
 
     pub fn reset(&mut self) {
         self.register_a = 0;
         self.register_x = 0;
+        self.register_y = 0;
+        self.stack_counter = STACK_RESET;
         self.status = 0b0010_0100;
 
         self.program_counter = self.mem_read_u16(0xFFFC);
@@ -124,20 +116,18 @@ impl<'a> CPU<'a> {
         F: FnMut(&mut CPU),
     {
         loop {
-            if let Some(_nmi) = self.bus.pull_nmi_status() {
+            if let Some(_nmi) = self.bus.poll_nmi_status() {
                 self.interrupt_nmi();
             }
 
+            callback(self);
+
             // debug
-            // println!("{}", trace(cpu));
+            // println!("{}", trace(self));
 
             let opscode = self.mem_read(self.program_counter);
-            if opscode == 0 {
-                return;
-            }
 
             self.program_counter += 1;
-
             let pc = self.program_counter;
 
             let ops = OPS_CODES
@@ -169,8 +159,9 @@ impl<'a> CPU<'a> {
             // }
 
             // (ops.call)(self, &ops.mode);
-
+            
             match ops.name {
+                "BRK" => return,
                 "ADC" => self.adc(&ops.mode),
                 "AND" => self.and(&ops.mode),
                 "ASL" => self.asl(&ops.mode),
@@ -181,7 +172,6 @@ impl<'a> CPU<'a> {
                 "BMI" => self.bmi(),
                 "BNE" => self.bne(),
                 "BPL" => self.bpl(),
-                "BRK" => self.brk(),
                 "BVC" => self.bvc(),
                 "BVS" => self.bvs(),
                 "CLC" => self.clc(),
@@ -235,8 +225,66 @@ impl<'a> CPU<'a> {
             if pc == self.program_counter {
                 self.program_counter += (ops.len - 1) as u16;
             }
-
-            callback(self);
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::rom::test;
+    use crate::ppu::NesPPU;
+
+    #[test]
+    fn test_0xa9_lda_immidiate_load_data() {
+        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let mut cpu = CPU::new(bus);
+        cpu.load_and_run(vec![0xa9, 0x05, 0x00]);
+        assert_eq!(cpu.register_a, 5);
+        assert!(cpu.status & 0b0000_0010 == 0b00);
+        assert!(cpu.status & 0b1000_0000 == 0);
+    }
+
+    #[test]
+    fn test_0xaa_tax_move_a_to_x() {
+        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let mut cpu = CPU::new(bus);
+        cpu.register_a = 10;
+        cpu.load_and_run(vec![0xa9, 0x0A,0xaa, 0x00]);
+
+        assert_eq!(cpu.register_x, 10)
+    }
+
+    #[test]
+    fn test_5_ops_working_together() {
+        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let mut cpu = CPU::new(bus);
+        cpu.load_and_run(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
+
+        assert_eq!(cpu.register_x, 0xc1)
+    }
+
+    #[test]
+    fn test_inx_overflow() {
+        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let mut cpu = CPU::new(bus);
+        cpu.reset();
+        cpu.register_x = 0xff;
+        cpu.program_counter = 0x0600;
+        cpu.load(vec![0xe8, 0xe8, 0x00]);
+        cpu.run();
+
+        assert_eq!(cpu.register_x, 1)
+    }
+
+    #[test]
+    fn test_lda_from_memory() {
+        let bus = Bus::new(test::test_rom(), |ppu: &NesPPU| {});
+        let mut cpu = CPU::new(bus);
+        cpu.mem_write(0x10, 0x55);
+
+        cpu.load_and_run(vec![0xa5, 0x10, 0x00]);
+
+        assert_eq!(cpu.register_a, 0x55);
     }
 }

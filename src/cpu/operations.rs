@@ -120,11 +120,9 @@ impl<'a> CPU<'a> {
         self.set_negative_flag(data & 0b1000_0000 != 0);
     }
 
-    pub fn brk(&mut self) {
-        self.status |= 0b0010_0000;
-
-        std::process::exit(0);
-    }
+    // pub fn brk(&mut self) {
+    //     self.status |= 0b0010_0000;
+    // }
 
     pub fn clc(&mut self) {
         self.set_carry_flag(false);
@@ -225,26 +223,6 @@ impl<'a> CPU<'a> {
 
         self.program_counter = addr;
     }
-
-    // pub fn jmpa(&mut self) {
-    //     let addr = self.mem_read_u16(self.program_counter);
-
-    //     self.program_counter = addr;
-    // }
-
-    // pub fn jmpi(&mut self) {
-    //     let mut addr = self.mem_read_u16(self.program_counter);
-
-    //     addr = if addr & 0x00FF == 0x00FF {
-    //         let lo = self.mem_read(addr);
-    //         let hi = self.mem_read(addr & 0xFF00);
-    //         (hi as u16) << 8 | (lo as u16)
-    //     } else {
-    //         self.mem_read_u16(addr)
-    //     };
-
-    //     self.program_counter = addr;
-    // }
 
     pub fn jsr(&mut self) {
         self.stack_push_u16(self.program_counter + 1);

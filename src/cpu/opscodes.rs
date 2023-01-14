@@ -167,9 +167,9 @@ lazy_static!(
 
         (0x08, OpCode::new("PHP", NoneAddressing, 1, 3)),
 
-        (0x68, OpCode::new("PLA", NoneAddressing, 1, 3)),
+        (0x68, OpCode::new("PLA", NoneAddressing, 1, 4)),
 
-        (0x28, OpCode::new("PLP", NoneAddressing, 1, 3)),
+        (0x28, OpCode::new("PLP", NoneAddressing, 1, 4)),
 
         (0x2A, OpCode::new("ROL", Accumulator, 1, 2)),
         (0x26, OpCode::new("ROL", ZeroPage,    2, 5)),
