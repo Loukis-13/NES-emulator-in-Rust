@@ -3,6 +3,9 @@ mod cpu;
 mod ppu;
 mod render;
 mod rom;
+mod controller;
+
+use std::collections::HashMap;
 
 use bus::Bus;
 use cpu::{Mem, CPU};
@@ -38,6 +41,17 @@ fn main() {
         .create_texture_target(PixelFormatEnum::RGB24, 256, 240)
         .unwrap();
 
+    // config controller
+    let mut key_map = HashMap::new();
+    key_map.insert(Keycode::Down, controller::JoypadButtons::DOWN);
+    key_map.insert(Keycode::Up, controller::JoypadButtons::UP);
+    key_map.insert(Keycode::Right, controller::JoypadButtons::RIGHT);
+    key_map.insert(Keycode::Left, controller::JoypadButtons::LEFT);
+    key_map.insert(Keycode::Space, controller::JoypadButtons::SELECT);
+    key_map.insert(Keycode::Return, controller::JoypadButtons::START);
+    key_map.insert(Keycode::A, controller::JoypadButtons::A);
+    key_map.insert(Keycode::S, controller::JoypadButtons::B);
+
     //load the game
     let game_code = std::fs::read(game_name).unwrap();
     let rom = Rom::new(&game_code).unwrap();
@@ -45,7 +59,7 @@ fn main() {
     let mut frame = Frame::new();
 
     // the game cycle
-    let bus = Bus::new(rom, move |ppu: &NesPPU| {
+    let bus = Bus::new(rom, move |ppu: &NesPPU, joypad: &mut controller::Joypad| {
         render::render(ppu, &mut frame);
         texture.update(None, &frame.data, 256 * 3).unwrap();
 
@@ -59,6 +73,18 @@ fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => std::process::exit(0),
+
+                Event::KeyDown { keycode, .. } => {
+                    if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        joypad.set_button_pressed_status(*key, true);
+                    }
+                }
+                Event::KeyUp { keycode, .. } => {
+                    if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                        joypad.set_button_pressed_status(*key, false);
+                    }
+                }
+ 
                 _ => { /* do nothing */ }
             }
         }

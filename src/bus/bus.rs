@@ -1,7 +1,7 @@
 use crate::{
     cpu::Mem,
     ppu::{NesPPU, PPU},
-    rom::Rom,
+    rom::Rom, controller::Joypad,
 };
 
 const RAM: u16 = 0x0000;
@@ -14,13 +14,14 @@ pub struct Bus<'call> {
     prg_rom: Vec<u8>,
     ppu: NesPPU,
     pub cycles: usize,
-    gameloop_callback: Box<dyn FnMut(&NesPPU) + 'call>,
+    gameloop_callback: Box<dyn FnMut(&NesPPU, &mut Joypad) + 'call>,
+    joypad1: Joypad,
 }
 
 impl<'a> Bus<'a> {
     pub fn new<'call, F>(rom: Rom, gameloop_callback: F) -> Bus<'call>
     where
-        F: FnMut(&NesPPU) + 'call,
+        F: FnMut(&NesPPU, &mut Joypad) + 'call,
     {
         let ppu = NesPPU::new(rom.chr_rom, rom.screen_mirroring);
 
@@ -30,6 +31,7 @@ impl<'a> Bus<'a> {
             ppu,
             cycles: 0,
             gameloop_callback: Box::from(gameloop_callback),
+            joypad1: Joypad::new(),
         }
     }
 
@@ -37,7 +39,7 @@ impl<'a> Bus<'a> {
         self.cycles += cycles as usize;
 
         if self.ppu.tick(cycles * 3) {
-            (self.gameloop_callback)(&self.ppu); //, &mut self.joypad1);
+            (self.gameloop_callback)(&self.ppu, &mut self.joypad1);
         }
     }
 
@@ -77,9 +79,7 @@ impl Mem for Bus<'_> {
             }
 
             0x4016 => {
-                // TODO
-                // ignore joypad 1;
-                0
+                self.joypad1.read()
             }
 
             0x4017 => {
@@ -126,8 +126,7 @@ impl Mem for Bus<'_> {
                 //ignore APU 
             }
             0x4016 => {
-                // TODO
-                // ignore joypad 1;
+                self.joypad1.write(data);
             }
             0x4017 => {
                 // TODO
@@ -147,5 +146,18 @@ impl Mem for Bus<'_> {
 
             _ => println!("Ignoring mem write-access at 0x{addr:X}"),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::rom::test;
+
+    #[test]
+    fn test_mem_read_write_to_ram() {
+        let mut bus = Bus::new(test::test_rom(), |_ppu: &NesPPU, _joypad: &mut Joypad| {});
+        bus.mem_write(0x01, 0x55);
+        assert_eq!(bus.mem_read(0x01), 0x55);
     }
 }
