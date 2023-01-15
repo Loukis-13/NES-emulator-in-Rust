@@ -14,8 +14,6 @@ pub struct NesPPU {
     pub oam_data: [u8; 256],    // 0x2004
     pub scroll: ScrollRegister, // 0x2005
     pub addr: AddrRegister,     // 0x2006
-    // pub data // 0x2007
-    // pub oam_dma // 0x4014
 
     // PPU Memory Map
     pub mirroring: Mirroring,    // 0x4000 - 0xFFFF
