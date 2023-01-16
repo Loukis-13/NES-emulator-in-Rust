@@ -1,6 +1,6 @@
 use crate::bus::Bus;
 
-use super::{memory::Mem, opscodes::OPS_CODES};
+use super::{flags, memory::Mem, opscodes::OPS_CODES};
 
 // static DEBUG: bool = true;
 const STACK: u16 = 0x0100;
@@ -72,9 +72,8 @@ impl<'a> CPU<'a> {
     fn interrupt_nmi(&mut self) {
         self.stack_push_u16(self.program_counter);
         let mut flag = self.status.clone();
-        // TODO make flag a struct
-        flag &= !0b0001_0000;
-        flag |= 0b0010_0000;
+        flag &= !flags::BREAK;
+        flag |= flags::BREAK2;
 
         self.stack_push(flag);
         self.set_interrupt_disable_flag(true);
@@ -159,7 +158,7 @@ impl<'a> CPU<'a> {
             // }
 
             // (ops.call)(self, &ops.mode);
-            
+
             match ops.name {
                 "BRK" => return,
                 "ADC" => self.adc(&ops.mode),
@@ -217,7 +216,7 @@ impl<'a> CPU<'a> {
                 "TXA" => self.txa(),
                 "TXS" => self.txs(),
                 "TYA" => self.tya(),
-                x => panic!("Invalid Code: {x}")
+                x => panic!("Invalid Code: {x}"),
             }
 
             self.bus.tick(ops.cycles);
@@ -233,8 +232,8 @@ impl<'a> CPU<'a> {
 mod test {
     use super::*;
     use crate::controller::Joypad;
-    use crate::rom::test;
     use crate::ppu::NesPPU;
+    use crate::rom::test;
 
     #[test]
     fn test_0xa9_lda_immidiate_load_data() {
@@ -251,7 +250,7 @@ mod test {
         let bus = Bus::new(test::test_rom(), |_ppu: &NesPPU, _joypad: &mut Joypad| {});
         let mut cpu = CPU::new(bus);
         cpu.register_a = 10;
-        cpu.load_and_run(vec![0xa9, 0x0A,0xaa, 0x00]);
+        cpu.load_and_run(vec![0xa9, 0x0A, 0xaa, 0x00]);
 
         assert_eq!(cpu.register_x, 10)
     }

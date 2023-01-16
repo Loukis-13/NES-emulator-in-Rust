@@ -26,8 +26,8 @@ fn render_name_table(
 
             for x in (0..=7).rev() {
                 let value = (1 & lower) << 1 | (1 & upper);
-                upper = upper >> 1;
-                lower = lower >> 1;
+                upper >>= 1;
+                lower >>= 1;
                 let rgb = palette::SYSTEM_PALLETE[palette[value as usize]];
                 let pixel_x = tile_column * 8 + x;
                 let pixel_y = tile_row * 8 + y;
@@ -62,9 +62,7 @@ pub fn render(ppu: &NesPPU, frame: &mut Frame) {
         | (Mirroring::VERTICAL, 0x2C00)
         | (Mirroring::HORIZONTAL, 0x2800)
         | (Mirroring::HORIZONTAL, 0x2C00) => (&ppu.vram[0x400..0x800], &ppu.vram[0..0x400]),
-        (_, _) => {
-            panic!("Not supported mirroring type {:?}", ppu.mirroring);
-        }
+        (_, _) => panic!("Not supported mirroring type {:?}", ppu.mirroring),
     };
 
     render_name_table(
@@ -95,6 +93,7 @@ pub fn render(ppu: &NesPPU, frame: &mut Frame) {
             (240 - scroll_y) as isize,
         );
     }
+
     // DRAW SPRITES
     for i in (0..ppu.oam_data.len()).step_by(4).rev() {
         let tile_idx = ppu.oam_data[i + 1] as u16;
@@ -161,6 +160,7 @@ fn bg_pallette(ppu: &NesPPU, attribute_table: &[u8], tile_column: usize, tile_ro
 
 fn sprite_palette(ppu: &NesPPU, pallete_idx: u8) -> [usize; 4] {
     let start = 0x11 + (pallete_idx * 4) as usize;
+    
     [
         0,
         ppu.palette_table[start] as usize,

@@ -1,15 +1,3 @@
-#[derive(Clone, Copy)]
-pub enum JoypadButtons {
-    A      = 0b00000001,
-    B      = 0b00000010,
-    SELECT = 0b00000100,
-    START  = 0b00001000,
-    UP     = 0b00010000,
-    DOWN   = 0b00100000,
-    LEFT   = 0b01000000,
-    RIGHT  = 0b10000000,
-}
-
 pub struct Joypad {
     strobe: bool,
     button_index: u8,
@@ -17,6 +5,15 @@ pub struct Joypad {
 }
 
 impl Joypad {
+    pub const A: u8      = 0b00000001;
+    pub const B: u8      = 0b00000010;
+    pub const SELECT: u8 = 0b00000100;
+    pub const START: u8  = 0b00001000;
+    pub const UP: u8     = 0b00010000;
+    pub const DOWN: u8   = 0b00100000;
+    pub const LEFT: u8   = 0b01000000;
+    pub const RIGHT: u8  = 0b10000000;
+
     pub fn new() -> Self {
         Self {
             strobe: false,
@@ -43,9 +40,7 @@ impl Joypad {
         response
     }
 
-    pub fn set_button_pressed_status(&mut self, key: JoypadButtons, arg: bool) {
-        let key = key as u8;
-
+    pub fn set_button_pressed_status(&mut self, key: u8, arg: bool) {
         if arg {
             self.button_status |= key;
         } else {
@@ -62,7 +57,7 @@ mod test {
     fn test_strobe_mode() {
         let mut joypad = Joypad::new();
         joypad.write(1);
-        joypad.set_button_pressed_status(JoypadButtons::A, true);
+        joypad.set_button_pressed_status(Joypad::A, true);
         for _x in 0..10 {
             assert_eq!(joypad.read(), 1);
         }
@@ -73,10 +68,10 @@ mod test {
         let mut joypad = Joypad::new();
 
         joypad.write(0);
-        joypad.set_button_pressed_status(JoypadButtons::RIGHT, true);
-        joypad.set_button_pressed_status(JoypadButtons::LEFT, true);
-        joypad.set_button_pressed_status(JoypadButtons::SELECT, true);
-        joypad.set_button_pressed_status(JoypadButtons::B, true);
+        joypad.set_button_pressed_status(Joypad::RIGHT, true);
+        joypad.set_button_pressed_status(Joypad::LEFT, true);
+        joypad.set_button_pressed_status(Joypad::SELECT, true);
+        joypad.set_button_pressed_status(Joypad::B, true);
 
         for _ in 0..=1 {
             assert_eq!(joypad.read(), 0);
