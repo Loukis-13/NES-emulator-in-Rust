@@ -32,4 +32,16 @@ impl MaskRegister {
     pub fn update(&mut self, data: u8) {
         self.bits = data;
     }
+
+    fn set_bit(&mut self, flag: u8, set: bool) {
+        self.bits = if set {
+            self.bits | flag
+        } else {
+            self.bits & !flag
+        };
+    }
+
+    pub fn show_sprites(&self) -> bool {
+        self.bits & SHOW_SPRITES != 0
+    }
 }

@@ -21,7 +21,7 @@ use sdl2::{
 };
 
 fn main() {
-    let game_name = "pacman.nes";
+    let game_name = "/home/loukis/nesgames/Ice Climber (USA, Europe).nes";
 
     // init sdl2
     let sdl_context = sdl2::init().unwrap();
