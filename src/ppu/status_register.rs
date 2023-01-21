@@ -18,7 +18,7 @@
 //            line); cleared after reading $2002 and at dot 1 of the
 //            pre-render line.
 
-const SPRITE_OVERFLOW: u8 = 0b0010_0000;
+// const SPRITE_OVERFLOW: u8 = 0b0010_0000;
 const SPRITE_ZERO_HIT: u8 = 0b0100_0000;
 const VBLANK_STARTED: u8  = 0b1000_0000;
 
@@ -39,9 +39,9 @@ impl StatusRegister {
         }
     }
 
-    pub fn set_sprite_overflow(&mut self, status: bool) {
-        self.set_flag(SPRITE_OVERFLOW, status);
-    }
+    // pub fn set_sprite_overflow(&mut self, status: bool) {
+    //     self.set_flag(SPRITE_OVERFLOW, status);
+    // }
 
     pub fn set_sprite_zero_hit(&mut self, status: bool) {
         self.set_flag(SPRITE_ZERO_HIT, status);

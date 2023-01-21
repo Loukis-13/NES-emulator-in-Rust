@@ -8,20 +8,45 @@ mod rom;
 use std::collections::HashMap;
 
 use bus::Bus;
+use clap::Parser;
 use cpu::CPU;
 use ppu::NesPPU;
 use render::Frame;
 use rom::Rom;
 use sdl2::{event::Event, keyboard::Keycode, pixels::PixelFormatEnum};
 
+/// Nes Emulator in Rust
+#[derive(Parser, Debug)]
+#[command(author = "Loukis-13", version, about, long_about)]
+struct Args {
+    /// Path to .nes file
+    file: std::path::PathBuf,
+
+    // /// Enable debuging
+    // #[arg(short, long)]
+    // debug: bool,
+}
+
 fn main() {
-    let game_name = "/home/loukis/nesgames/Ice Climber (USA, Europe).nes";
+    let args = Args::parse();
+
+    //load the game
+    let game_code = std::fs::read(&args.file).expect("Expected ines format file");
+    let rom = Rom::new(&game_code).unwrap();
+
+    let game_name = args
+        .file
+        .file_name()
+        .expect("Expected file")
+        .to_str()
+        .expect("Expected valid file name")
+        .trim_end_matches(".nes");
 
     // init sdl2
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window(game_name.trim_end_matches(".nes"), 256 * 3, 240 * 3)
+        .window(game_name, 256 * 3, 240 * 3)
         .position_centered()
         .build()
         .unwrap();
@@ -44,9 +69,7 @@ fn main() {
     key_map.insert(Keycode::A, controller::Joypad::A);
     key_map.insert(Keycode::S, controller::Joypad::B);
 
-    //load the game
-    let game_code = std::fs::read(game_name).unwrap();
-    let rom = Rom::new(&game_code).unwrap();
+    
 
     let mut frame = Frame::new();
 

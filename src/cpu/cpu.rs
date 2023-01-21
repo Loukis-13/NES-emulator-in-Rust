@@ -2,7 +2,6 @@ use crate::bus::Bus;
 
 use super::{flags, memory::Mem, opscodes::OPS_CODES};
 
-// static DEBUG: bool = true;
 const STACK: u16 = 0x0100;
 const STACK_RESET: u8 = 0xfd;
 
@@ -82,6 +81,7 @@ impl<'a> CPU<'a> {
         self.program_counter = self.mem_read_u16(0xfffA);
     }
 
+    #[cfg(test)]
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
         self.reset();
@@ -89,6 +89,7 @@ impl<'a> CPU<'a> {
         self.run();
     }
 
+    #[cfg(test)]
     pub fn load(&mut self, program: Vec<u8>) {
         for i in 0..(program.len() as u16) {
             self.mem_write(0x0600 + i, program[i as usize]);
@@ -120,9 +121,6 @@ impl<'a> CPU<'a> {
             }
 
             callback(self);
-
-            // debug
-            // println!("{}", trace(self));
 
             let opscode = self.mem_read(self.program_counter);
 

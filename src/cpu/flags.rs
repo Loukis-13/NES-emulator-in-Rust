@@ -61,18 +61,18 @@ impl<'a> CPU<'a> {
     pub fn is_overflow_set(&self) -> bool {
         self.status & OVERFLOW != 0
     }
-    pub fn is_break2_set(&self) -> bool {
-        self.status & BREAK2 != 0
-    }
-    pub fn is_break_set(&self) -> bool {
-        self.status & BREAK != 0
-    }
-    pub fn is_decimal_mode_set(&self) -> bool {
-        self.status & DECIMAL_MODE != 0
-    }
-    pub fn is_interrupt_disable_set(&self) -> bool {
-        self.status & INTERRUPT_DISABLE != 0
-    }
+    // pub fn is_break2_set(&self) -> bool {
+    //     self.status & BREAK2 != 0
+    // }
+    // pub fn is_break_set(&self) -> bool {
+    //     self.status & BREAK != 0
+    // }
+    // pub fn is_decimal_mode_set(&self) -> bool {
+    //     self.status & DECIMAL_MODE != 0
+    // }
+    // pub fn is_interrupt_disable_set(&self) -> bool {
+    //     self.status & INTERRUPT_DISABLE != 0
+    // }
     pub fn is_zero_set(&self) -> bool {
         self.status & ZERO != 0
     }
